@@ -238,10 +238,10 @@ module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,
 
   //combinational
   assign imm_ext = (instr[15] == 1)? {16'hFFFF, instr[15:0]} : {16'h0000, instr[15:0]};//Sign extend immediate field
-  assign dr = (`opcode == 6'd3)? 5'b11111 :((format == R)? instr[15:11] : instr[20:16]); //Destination Register MUX (MUX1)
+  assign dr = (`opcode == 6'd3)? 5'b11111 : (`f_code == 6'b101111 || `f_code == 6'b110000)? instr[25:21] :((format == R)? instr[15:11] : instr[20:16]); //Destination Register MUX (MUX1)
   assign alu_in_A = readreg1;
   assign alu_in_B = (reg_or_imm_save)? imm_ext : readreg2; //ALU MUX (MUX2)
-  assign reg_in = (`opcode == 6'd3)? pc+1 : ((alu_or_mem_save)? Mem_Bus : alu_result_save); //Data MUX
+  assign reg_in = (`opcode == 6'd3)? pc : ((alu_or_mem_save)? Mem_Bus : alu_result_save); //Data MUX
   assign format = (`opcode == 6'd0)? R : ((`opcode == 6'd2 || `opcode == 6'd3)? J : I);
   assign Mem_Bus = (writing)? readreg2 : 32'bZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ;
 
