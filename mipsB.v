@@ -21,7 +21,7 @@
 
 
 
-module Complete_MIPSB(CLK, RST, A_Out, D_Out,OUT,PCtop,S2,CTRL,S4,S5,S6);
+module Complete_MIPSB(CLK, RST, A_Out, D_Out,OUT,PCtop,S2,CTRL,S4,S5,S6,S31);
   // Will need to be modified to add functionality
   input CLK;
   input RST;
@@ -32,6 +32,7 @@ module Complete_MIPSB(CLK, RST, A_Out, D_Out,OUT,PCtop,S2,CTRL,S4,S5,S6);
   output OUT;
   output [6:0] PCtop;
   output [31:0] S2;
+  output [31:0] S31;
   
  
   
@@ -46,11 +47,14 @@ module Complete_MIPSB(CLK, RST, A_Out, D_Out,OUT,PCtop,S2,CTRL,S4,S5,S6);
   wire [31:0] Mem_Bus;
   wire [7:0] OUTy;
   wire PCnew;
+  wire [31:0] S31y;
   assign PCnew = PC;
   assign PCtop = PCnew;
   assign OUT = OUTy;
+  assign S31 = S31y;
+  
 
-  MIPSB CPU(CLK, RST, CS, WE, ADDR, Mem_Bus,OUTy,PC,S2w,CTRL,s4,s5,s6);
+  MIPSB CPU(CLK, RST, CS, WE, ADDR, Mem_Bus,OUTy,PC,S2w,CTRL,s4,s5,s6,S31y);
   MemoryB MEM(CS, WE, CLK, ADDR, Mem_Bus);
 
 endmodule
@@ -80,7 +84,7 @@ module MemoryB(CS, WE, CLK, ADDR, Mem_Bus);
         begin
             RAM[i] = 32'd0; // init all locations to 0
         end
-        $readmemh("mylab7test.txt", RAM);
+        $readmemh("lab7_test.txt", RAM);
         // read init values from a file
     
   end
@@ -103,7 +107,7 @@ endmodule
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-module REGB(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT,S2,CTRL,S4,S5,S6);
+module REGB(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT,S2,CTRL,S4,S5,S6,S31);
   input CLK;
   input RegW;
   input [2:0] CTRL;
@@ -116,6 +120,7 @@ module REGB(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT,S2,CTRL,S4,
   output [7:0] OUT;
   output [31:0] S2;
   output [31:0] S6,S4,S5;
+  output [31:0] S31;
 
   reg [31:0] REG [0:31];
   integer i;
@@ -125,6 +130,7 @@ module REGB(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT,S2,CTRL,S4,
   assign S5 = REG[5];
   assign S6 = REG[6];
   assign S4 = REG[4];
+  assign S31 = REG[31];
  
   
 
@@ -158,7 +164,7 @@ endmodule
 `define f_code instr[5:0]
 `define numshift instr[10:6]
 
-module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,S6);
+module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,S6,S31);
   input CLK, RST;
   input [2:0] CTRL;
   output reg CS, WE;
@@ -167,7 +173,7 @@ module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,
   output [7:0] OUT;
   output [6:0] programcounter;
   output[31:0] S2;
-  output[31:0] S4,S5,S6;
+  output[31:0] S4,S5,S6,S31;
  
   //special instructions (opcode == 000000), values of F code (bits 5-0):
   parameter add = 6'b100000;
@@ -220,12 +226,13 @@ module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,
   // my code ////////////////////////////////////////////////////////////////////////////////////////////////
   wire [7:0] OUTy;
   wire [31:0] S2y;
-  wire [31:0] s4,s5,s6;
+  wire [31:0] s4,s5,s6,S31y;
   assign S4 = s4;
   assign S5 = s5;
   assign S6 = s6;
   assign OUT = OUTy;
   assign S2 = S2y;
+  assign S31 = S31y;
   
   // end of my code /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -240,7 +247,7 @@ module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,
 
   //drive memory bus only during writes
   assign ADDR = (fetchDorI)? pc : alu_result_save[6:0]; //ADDR Mux
-  REGB Register(CLK, regw, dr, `sr1, `sr2, reg_in, readreg1, readreg2,OUTy,S2y,CTRL,s4,s5,s6);
+  REGB Register(CLK, regw, dr, `sr1, `sr2, reg_in, readreg1, readreg2,OUTy,S2y,CTRL,s4,s5,s6,S31y);
 
   initial begin
     op = and1; opsave = and1;

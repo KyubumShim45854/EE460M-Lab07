@@ -16,9 +16,9 @@ wire[7:0] OUT;
 wire [6:0] PCTOP;
 reg [2:0] CTRL;
 wire [31:0] S2;
-wire [31:0] S4,S5,S6;
+wire [31:0] S4,S5,S6,S31;
 
-MIPSB CPU(CLK, rst, CS, WE, Address, Mem_Bus_Wire,OUT,PCTOP,S2,CTRL,S4,S5,S6); 
+MIPSB CPU(CLK, rst, CS, WE, Address, Mem_Bus_Wire,OUT,PCTOP,S2,CTRL,S4,S5,S6,S31); 
 MemoryB MEM(CS_Mux, WE_Mux, CLK, Address_Mux, Mem_Bus_Wire); 
 assign Address_Mux = (init)? AddressTB : Address; 
 assign WE_Mux = (init)? WE_TB : WE; 
