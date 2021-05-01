@@ -13,9 +13,13 @@ wire WE_Mux, CS_Mux;
 reg init, rst, WE_TB, CS_TB; 
 integer i; 
 wire[7:0] OUT;
+wire [6:0] PCTOP;
+reg [2:0] CTRL;
+wire [31:0] S2;
+wire [31:0] S4,S5,S6;
 
-MIPS CPU(CLK, rst, CS, WE, Address, Mem_Bus_Wire,OUT); 
-Memory MEM(CS_Mux, WE_Mux, CLK, Address_Mux, Mem_Bus_Wire); 
+MIPSB CPU(CLK, rst, CS, WE, Address, Mem_Bus_Wire,OUT,PCTOP,S2,CTRL,S4,S5,S6); 
+MemoryB MEM(CS_Mux, WE_Mux, CLK, Address_Mux, Mem_Bus_Wire); 
 assign Address_Mux = (init)? AddressTB : Address; 
 assign WE_Mux = (init)? WE_TB : WE; 
 assign CS_Mux = (init)? CS_TB : CS; 
@@ -33,6 +37,18 @@ initial begin expected[1] = 32'h00000006;
    expected[9] = 32'h00000003; // $9 content=3 
    expected[10] = 32'h00412022; // $10 content=5th instr 
    CLK = 0; 
+   CTRL = 0;
+   #1000
+   CTRL = 1;
+   #1000
+   CTRL = 2;
+   #1000
+   CTRL = 3;
+   #1000 CTRL = 4;
+   #1000 CTRL = 5;
+   #1000 CTRL = 0;
+   
+   
    
    end 
    

@@ -21,18 +21,26 @@
 
 
 
-module Complete_MIPS(CLK, RST, A_Out, D_Out,OUT,PCtop);
+module Complete_MIPSB(CLK, RST, A_Out, D_Out,OUT,PCtop,S2,CTRL,S4,S5,S6);
   // Will need to be modified to add functionality
   input CLK;
   input RST;
+  input [2:0] CTRL;
   output [6:0] A_Out;
+  output [31:0] S6,S4,S5;
   output [31:0] D_Out;
   output OUT;
   output [6:0] PCtop;
+  output [31:0] S2;
   
+ 
   
-  
-
+  wire [31:0] S2w;
+  wire [31:0] s6,s4,s5;
+   assign S2 = S2w;
+   assign S4 = s4;
+   assign S5 = s5;
+   assign S6 = s6;
   wire CS, WE;
   wire [6:0] ADDR;
   wire [31:0] Mem_Bus;
@@ -42,8 +50,8 @@ module Complete_MIPS(CLK, RST, A_Out, D_Out,OUT,PCtop);
   assign PCtop = PCnew;
   assign OUT = OUTy;
 
-  MIPS CPU(CLK, RST, CS, WE, ADDR, Mem_Bus,OUTy,PC);
-  Memory MEM(CS, WE, CLK, ADDR, Mem_Bus);
+  MIPSB CPU(CLK, RST, CS, WE, ADDR, Mem_Bus,OUTy,PC,S2w,CTRL,s4,s5,s6);
+  MemoryB MEM(CS, WE, CLK, ADDR, Mem_Bus);
 
 endmodule
 
@@ -53,7 +61,7 @@ endmodule
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-module Memory(CS, WE, CLK, ADDR, Mem_Bus);
+module MemoryB(CS, WE, CLK, ADDR, Mem_Bus);
   input CS;
   input WE;
   input CLK;
@@ -72,7 +80,7 @@ module Memory(CS, WE, CLK, ADDR, Mem_Bus);
         begin
             RAM[i] = 32'd0; // init all locations to 0
         end
-        $readmemh("programrotator.txt", RAM);
+        $readmemh("mylab7test.txt", RAM);
         // read init values from a file
     
   end
@@ -95,9 +103,10 @@ endmodule
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-module REG(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT);
+module REGB(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT,S2,CTRL,S4,S5,S6);
   input CLK;
   input RegW;
+  input [2:0] CTRL;
   input [4:0] DR;
   input [4:0] SR1;
   input [4:0] SR2;
@@ -105,11 +114,19 @@ module REG(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT);
   output reg [31:0] ReadReg1;
   output reg [31:0] ReadReg2;
   output [7:0] OUT;
+  output [31:0] S2;
+  output [31:0] S6,S4,S5;
 
   reg [31:0] REG [0:31];
   integer i;
   
   assign OUT = REG[1][7:0];
+  assign S2 = REG[2];
+  assign S5 = REG[5];
+  assign S6 = REG[6];
+  assign S4 = REG[4];
+ 
+  
 
   initial begin
     ReadReg1 = 0;
@@ -118,6 +135,7 @@ module REG(CLK, RegW, DR, SR1, SR2, Reg_In, ReadReg1, ReadReg2, OUT);
 
   always @(posedge CLK)
   begin
+  REG[1] = {29'd0,CTRL};
 
     if(RegW == 1'b1)
       REG[DR] <= Reg_In[31:0];
@@ -140,13 +158,16 @@ endmodule
 `define f_code instr[5:0]
 `define numshift instr[10:6]
 
-module MIPS (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter);
+module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,S6);
   input CLK, RST;
+  input [2:0] CTRL;
   output reg CS, WE;
   output [6:0] ADDR;
   inout [31:0] Mem_Bus;
   output [7:0] OUT;
   output [6:0] programcounter;
+  output[31:0] S2;
+  output[31:0] S4,S5,S6;
  
   //special instructions (opcode == 000000), values of F code (bits 5-0):
   parameter add = 6'b100000;
@@ -158,6 +179,12 @@ module MIPS (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter);
   parameter srl = 6'b000010;
   parameter sll = 6'b000000;
   parameter jr = 6'b001000;
+  parameter rbit = 6'b101111;
+  parameter rev = 6'b110000;
+  parameter add8 = 6'b101101;
+  parameter sadd = 6'b110001;
+  parameter ssub = 6'b110010;
+  parameter lu1 = 6'b110011;
 
   //non-special instructions, values of opcodes:
   parameter addi = 6'b001000;
@@ -168,6 +195,8 @@ module MIPS (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter);
   parameter beq = 6'b000100;
   parameter bne = 6'b000101;
   parameter j = 6'b000010;
+  parameter jal = 6'b000011;
+  parameter lui = 6'b001111;
 
   //instruction format
   parameter R = 2'd0;
@@ -182,27 +211,36 @@ module MIPS (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter);
   assign programcounter = pc;
   wire [31:0] imm_ext, alu_in_A, alu_in_B, reg_in, readreg1, readreg2;
   reg [31:0] alu_result_save;
+  reg [32:0] sadboy;
   reg alu_or_mem, alu_or_mem_save, regw, writing, reg_or_imm, reg_or_imm_save;
   reg fetchDorI;
   wire [4:0] dr;
+  integer i;
   reg [2:0] state, nstate;
   // my code ////////////////////////////////////////////////////////////////////////////////////////////////
   wire [7:0] OUTy;
+  wire [31:0] S2y;
+  wire [31:0] s4,s5,s6;
+  assign S4 = s4;
+  assign S5 = s5;
+  assign S6 = s6;
   assign OUT = OUTy;
+  assign S2 = S2y;
+  
   // end of my code /////////////////////////////////////////////////////////////////////////////////////////////
 
   //combinational
   assign imm_ext = (instr[15] == 1)? {16'hFFFF, instr[15:0]} : {16'h0000, instr[15:0]};//Sign extend immediate field
-  assign dr = (format == R)? instr[15:11] : instr[20:16]; //Destination Register MUX (MUX1)
+  assign dr = (`opcode == 6'd3)? 5'b11111 :((format == R)? instr[15:11] : instr[20:16]); //Destination Register MUX (MUX1)
   assign alu_in_A = readreg1;
   assign alu_in_B = (reg_or_imm_save)? imm_ext : readreg2; //ALU MUX (MUX2)
-  assign reg_in = (alu_or_mem_save)? Mem_Bus : alu_result_save; //Data MUX
-  assign format = (`opcode == 6'd0)? R : ((`opcode == 6'd2)? J : I);
+  assign reg_in = (`opcode == 6'd3)? pc+1 : ((alu_or_mem_save)? Mem_Bus : alu_result_save); //Data MUX
+  assign format = (`opcode == 6'd0)? R : ((`opcode == 6'd2 || `opcode == 6'd3)? J : I);
   assign Mem_Bus = (writing)? readreg2 : 32'bZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ;
 
   //drive memory bus only during writes
   assign ADDR = (fetchDorI)? pc : alu_result_save[6:0]; //ADDR Mux
-  REG Register(CLK, regw, dr, `sr1, `sr2, reg_in, readreg1, readreg2,OUTy);
+  REGB Register(CLK, regw, dr, `sr1, `sr2, reg_in, readreg1, readreg2,OUTy,S2y,CTRL,s4,s5,s6);
 
   initial begin
     op = and1; opsave = and1;
@@ -228,6 +266,7 @@ module MIPS (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter);
         nstate = 3'd2; reg_or_imm = 0; alu_or_mem = 0;
         if (format == J) begin //jump, and finish
           npc = instr[6:0];
+          if(`opcode == jal) regw = 1;
           nstate = 3'd0;
         end
         else if (format == R) //register instructions
@@ -245,6 +284,7 @@ module MIPS (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter);
           end
           else if (`opcode == andi) op = and1;
           else if (`opcode == ori) op = or1;
+          else if (`opcode == lui) op = lu1;
         end
       end
       2: begin //execute
@@ -252,6 +292,32 @@ module MIPS (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter);
         if (opsave == and1) alu_result = alu_in_A & alu_in_B;
         else if (opsave == or1) alu_result = alu_in_A | alu_in_B;
         else if (opsave == add) alu_result = alu_in_A + alu_in_B;
+        else if (opsave == lu1) alu_result = {alu_in_B,16'd0};
+        else if (opsave == rbit) begin
+        for(i=0;i<=31; i=i+1)
+            alu_result[i] = alu_in_B[31-i];
+           end
+        else if (opsave == rev) begin
+        alu_result[7:0] = alu_in_B[31:24];
+        alu_result[15:8] = alu_in_B[23:16];
+        alu_result[23:16] = alu_in_B[15:8];
+        alu_result[31:24] = alu_in_B[7:0];
+        end
+        else if(opsave == add8) begin
+        alu_result[7:0] = alu_in_A[7:0] + alu_in_B[7:0];
+        alu_result[15:8] = alu_in_A[15:8] + alu_in_B[15:8];
+        alu_result[23:16] = alu_in_A[23:16] + alu_in_B[23:16];
+        alu_result[31:24] = alu_in_A[31:24] + alu_in_B[31:24];
+        end
+        else if(opsave == sadd) begin
+        sadboy = alu_in_A + alu_in_B;
+        if(sadboy[32]) alu_result = 32'hFFFFFFFF;
+        else alu_result = alu_in_A + alu_in_B;
+        end
+        else if(opsave == ssub) begin
+        if(alu_in_B > alu_in_A) alu_result = 0;
+        else alu_result = alu_in_A - alu_in_B;
+        end
         else if (opsave == sub) alu_result = alu_in_A - alu_in_B;
         else if (opsave == srl) alu_result = alu_in_B >> `numshift;
         else if (opsave == sll) alu_result = alu_in_B << `numshift;
