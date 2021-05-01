@@ -335,7 +335,7 @@ module MIPSB (CLK, RST, CS, WE, ADDR, Mem_Bus, OUT,programcounter,S2,CTRL,S4,S5,
       end
       3: begin //prepare to write to mem
         nstate = 3'd0;
-        if ((format == R)||(`opcode == addi)||(`opcode == andi)||(`opcode == ori)) regw = 1;
+        if ((format == R)||(`opcode == addi)||(`opcode == andi)||(`opcode == ori)||(`opcode == lui)) regw = 1;
         else if (`opcode == sw) begin
           CS = 1;
           WE = 1;
